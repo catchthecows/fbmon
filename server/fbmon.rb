@@ -13,6 +13,7 @@ APP_SECRET = ENV['FB_APP_SECRET']
 
 # set your app site url
 # don't forget to add your IP to the app's whitelist on facebook
+# make sure the URL has the final / 
 SITE_URL   = ENV['APP_SITE_URL']
 
 APP_ACCESS_TOKEN = ENV['FB_APP_ACCESS_TOKEN']
@@ -39,25 +40,12 @@ class FBMon < Sinatra::Application
 
 	get '/' do
 		if session['access_token']
-		  'You are logged in! <a href="/logout">Logout</a>'
-			# do some stuff with facebook here
-			# for example:
-			#@graph = Koala::Facebook::API.new(session["access_token"])
-	                #profile = @graph.get_object("me")
-			#profile.to_json
-			tokeninfo = session['oauth'].exchange_access_token_info(session["access_token"])
-			longtoken = tokeninfo['access_token']
+			@api = Koala::Facebook::API.new(session["access_token"])
 
-			@api = Koala::Facebook::API.new(longtoken)
-	               #profile = @api.get_object("100001193759091")
-		#	profile.to_json
-			@results = @api.get_connections('100001193759091','home?fields=id,updated_time,created_time')
+	        profile = @graph.get_object("me")
+			@results = @api.get_connections(profile['id'],'home?fields=id,updated_time,created_time')
+			#@results = @api.get_connections('100001193759091','home?fields=id,updated_time,created_time')
 			@results.to_json
-
-			# publish to your wall (if you have the permissions)
-			# @graph.put_wall_post("I'm posting from my new cool app!")
-			# or publish to someone else (if you have the permissions too ;) )
-			# @graph.put_wall_post("Checkout my new cool app!", {}, "someoneelse's id")
 		else
 			'<a href="/fbauth">Auth</a>'
 		end
@@ -80,7 +68,11 @@ class FBMon < Sinatra::Application
 	#method to handle the redirect from facebook back to you
 	get '/callback' do
 		#get the access token from facebook with your code
-		session['access_token'] = session['oauth'].get_access_token(params[:code])
+		basic_access_token = session['oauth'].get_access_token(params[:code])
+
+        #convert the access token to an extended duration token
+		tokeninfo = session['oauth'].exchange_access_token_info(basic_access_token)
+        session["access_token"] = tokeninfo['access_token']
 		redirect '/'
 	end
 
