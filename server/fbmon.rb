@@ -15,6 +15,8 @@ APP_SECRET = ENV['FB_APP_SECRET']
 # don't forget to add your IP to the app's whitelist on facebook
 SITE_URL   = ENV['APP_SITE_URL']
 
+APP_ACCESS_TOKEN = ENV['FB_APP_ACCESS_TOKEN']
+
 class FBMon < Sinatra::Application
 
 	include Koala
@@ -40,7 +42,18 @@ class FBMon < Sinatra::Application
 		  'You are logged in! <a href="/logout">Logout</a>'
 			# do some stuff with facebook here
 			# for example:
-			# @graph = Koala::Facebook::GraphAPI.new(session["access_token"])
+			#@graph = Koala::Facebook::API.new(session["access_token"])
+	                #profile = @graph.get_object("me")
+			#profile.to_json
+			tokeninfo = session['oauth'].exchange_access_token_info(session["access_token"])
+			longtoken = tokeninfo['access_token']
+
+			@api = Koala::Facebook::API.new(longtoken)
+	               #profile = @api.get_object("100001193759091")
+		#	profile.to_json
+			@results = @api.get_connections('100001193759091','home?fields=id,updated_time,created_time')
+			@results.to_json
+
 			# publish to your wall (if you have the permissions)
 			# @graph.put_wall_post("I'm posting from my new cool app!")
 			# or publish to someone else (if you have the permissions too ;) )
@@ -55,7 +68,7 @@ class FBMon < Sinatra::Application
 		# generate a new oauth object with your app data and your callback url
 		session['oauth'] = Facebook::OAuth.new(APP_ID, APP_SECRET, SITE_URL + 'callback')
 		# redirect to facebook to get your code
-		redirect session['oauth'].url_for_oauth_code()
+		redirect session['oauth'].url_for_oauth_code(:permissions=>"read_stream")
 	end
 
 	get '/logout' do
